@@ -10,6 +10,12 @@
 #define JOGO_ALT 40
 #define DEFAULT_LARG_RAQUETE 15
 
+// Números dos pares de cores
+#define COR_RAQUETE 1
+#define COR_BOLA 2
+#define COR_BLOCO_NORMAL 3
+#define COR_INQUEBRAVEL 4
+
 typedef struct {
   int x, y;
 } POSICAO;
@@ -49,6 +55,18 @@ int main(int agrc, char *argv[]) {
   //WINDOW *escore;
 
   initscr();
+  if(has_colors() == FALSE) {
+    endwin();
+    printf("Terminal nao suporta cores.\n");
+    return 1;
+  }
+  start_color();
+
+  init_pair(COR_RAQUETE, COLOR_WHITE, COLOR_GREEN);
+  init_pair(COR_BOLA, COLOR_WHITE, COLOR_BLACK);
+  init_pair(COR_BLOCO_NORMAL, COLOR_WHITE, COLOR_BLUE);
+  init_pair(COR_INQUEBRAVEL, COLOR_WHITE, COLOR_YELLOW);
+
   keypad(stdscr, TRUE); // Precisaremos do F1
   noecho();
   curs_set(FALSE);
@@ -62,7 +80,7 @@ int main(int agrc, char *argv[]) {
 
   wgetch(w_splash);
 
-  // Cira janela do jogo
+  // Cria janela do jogo
   w_jogo = newwin(JOGO_ALT, JOGO_LARG, 0, 0);
   keypad(w_jogo, TRUE); // Precisaremos do F1
 
@@ -133,6 +151,7 @@ WINDOW *criar_raquete(RAQUETE raquete) {
 
   nova_raquete = newwin(altura, largura, inicio.y, inicio.x);
   wmove(nova_raquete, 0, 0);
+  wattron(nova_raquete, COLOR_PAIR(COR_RAQUETE));
   for (i = 0; i < raquete.tamanho; i++) {
     waddch(nova_raquete, ACS_DIAMOND);
   }
@@ -145,11 +164,11 @@ WINDOW *criar_raquete(RAQUETE raquete) {
 WINDOW *mover_raquete(WINDOW *w_raquete, RAQUETE *raquete, int direcao) {
   int i;
 
-  wmove(w_raquete, 0, 0);  
+  wmove(w_raquete, 0, 0);
+  wattron(w_raquete, COLOR_PAIR(COR_BOLA));
   for (i = 0; i < raquete->tamanho; i++) {
     wprintw(w_raquete, "%c", ' ');
   }
-
   wrefresh(w_raquete);
   
   delwin(w_raquete);
