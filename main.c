@@ -66,22 +66,37 @@ int main(int agrc, char *argv[]) {
     mvwprintw(w_jogo, 4, 9, "%d", tecla);
     mvwprintw(w_jogo, 5, 7, "%d", no_limite(wraq1.raquete));
     mvwprintw(w_jogo, 6, 3, "%2d,%2d", wraq1.raquete.pos.x, wraq1.raquete.pos.x + wraq1.raquete.tamanho);
+    mvwprintw(w_jogo, 7, 3, "%d %d", wbola.bola.pos.x, wbola.bola.pos.y);
     switch(tecla) {
     case KEY_F(1):
       finaliza = 1;
       break;
     case KEY_LEFT:
-      mover_raquete(&wraq1, -1);
-      mover_raquete(&wraq2, -1);
+      wraq1.raquete.direcao = -1;
+      wraq2.raquete.direcao = -1;
+      mover_raquete(&wraq1);
+      mover_raquete(&wraq2);
       break;
     case KEY_RIGHT:
-      mover_raquete(&wraq1, 1);
-      mover_raquete(&wraq2, 1);
+      wraq1.raquete.direcao = 1;
+      wraq2.raquete.direcao = 1;
+      mover_raquete(&wraq1);
+      mover_raquete(&wraq2);
       break;
     default:
+      wraq1.raquete.direcao = 0;
+      wraq2.raquete.direcao = 0;
       break;
     }
-    mover_bola(&wbola);
+
+     wbola.bola.ct_periodo++;
+
+    if (deve_mover_bola(wbola.bola) != 0) {
+      verificar_colisao(&(wbola.bola), &(wraq1.raquete), &(wraq2.raquete));
+      mover_bola(&wbola);
+      wbola.bola.ct_periodo = 0;
+    }
+
   }
 
   endwin();

@@ -17,12 +17,14 @@ void imprime_no_meio(WINDOW *win, char *texto) {
   refresh();
 }
 
-WINDOW *criar_raquete(RAQUETE raquete) {
+void criar_raquete(WRAQUETE *wr) {
   WINDOW *nova_raquete;
+  RAQUETE raquete = wr->raquete;
   int i;
   int altura = 1;
   int largura = raquete.tamanho;
   POSICAO inicio = raquete.pos;
+
 
   /* Cria uma nova janela pra a raquete, move o cursor para o inicio e inicializa cores da raquete */
   nova_raquete = newwin(altura, largura, inicio.y, inicio.x);
@@ -36,13 +38,14 @@ WINDOW *criar_raquete(RAQUETE raquete) {
   
   wrefresh(nova_raquete);
   
-  return nova_raquete;
+  wr->janela = nova_raquete;
 }
 
-WINDOW *mover_raquete(WRAQUETE *wr, int direcao) {
+void mover_raquete(WRAQUETE *wr) {
   int i;
   int limites;
   WINDOW *w = wr->janela;
+  RAQUETE *r = &(wr->raquete);
 
   /* Move cursor para início da raquete, altera cores para padrão e preenche raquete com ' ' */
   wmove(w, 0, 0);
@@ -55,15 +58,15 @@ WINDOW *mover_raquete(WRAQUETE *wr, int direcao) {
   /* Libera memoria da janela da raquete antiga, altera a posicao da raquete e retorna uma nova raquete */
   delwin(w);
 
-  limites = no_limite(wr->raquete);
+  limites = no_limite(*r);
   /* limite esquerdo: 01
    * limite direito: 10 */
-  if (((direcao == -1) && !((limites & 1) > 0)) ||
-      ((direcao == 1) && !((limites & 2) > 0))) {
-    wr->raquete.pos.x += direcao;
+  if (((r->direcao == -1) && !((limites & 1) > 0)) ||
+      ((r->direcao == 1) && !((limites & 2) > 0))) {
+    wr->raquete.pos.x += r->direcao;
   }
 
-  return criar_raquete(wr->raquete);
+  criar_raquete(wr);
 }
 
 WINDOW *criar_bola(BOLA bola) {
@@ -99,10 +102,12 @@ void iniciar_jogo(WRAQUETE *wr1, WRAQUETE *wr2, WBOLA *wb) {
 }
 
 void inicia_raquete (WRAQUETE *wr, int altura) {
-  wr->raquete.tamanho = DEFAULT_LARG_RAQUETE;
-  wr->raquete.pos.x = (JOGO_LARG - wr->raquete.tamanho) / 2;
-  wr->raquete.pos.y = altura;
-  wr->janela = criar_raquete(wr->raquete);
+  RAQUETE *r = &(wr->raquete);
+  r->tamanho = DEFAULT_LARG_RAQUETE;
+  r->pos.x = (JOGO_LARG - wr->raquete.tamanho) / 2;
+  r->pos.y = altura;
+  r->direcao = 0;
+  criar_raquete(wr);
 }
 
 void inicia_bola (WBOLA *wb, POSICAO posicao, POSICAO direcao) {
@@ -110,7 +115,8 @@ void inicia_bola (WBOLA *wb, POSICAO posicao, POSICAO direcao) {
 
   b->pos = posicao;
   b->direcao = direcao;
-  b->periodo = TIMEOUT_JOGO;
+  b->periodo = PERIODO_PADRAO;
+  b->ct_periodo = 0;
   wb->janela = criar_bola(wb->bola);
 }
 
@@ -129,20 +135,39 @@ void mover_bola(WBOLA *wb) {
   delwin(w);
 
   /* Colisao da bola deve ser verificada antes desse metodo */
-  verificar_colisao(wb);
-
   b->pos.x += b->direcao.x;
   b->pos.y += b->direcao.y;
   w = criar_bola(*b);
 }
 
-void verificar_colisao(WBOLA *wb) {
-  BOLA *b = &(wb->bola);
+/*
+ * verificar_colisao retorna:
+ * 0: sem colisao
+ * 1: colisao com parede
+ * 2: colisao com raquete
+ * 4: colisao com bloco no lado
+ * 8: colisao com bloco em cima ou abaixo
+ */
+void verificar_colisao(BOLA *b, RAQUETE *r1, RAQUETE *r2) {
+  int colisao = 0;
+  POSICAO prox_pos;
 
-  if (b->pos.x >= JOGO_LARG ||
-      b->pos.x <= 0) {
-    b->direcao.x = -(b->direcao.x);
+  prox_pos.x = b->pos.x + b->direcao.x;
+  prox_pos.y = b->pos.y + b->direcao.y;
+
+  if (prox_pos.x >= JOGO_LARG - 1 ||
+      prox_pos.x <= 1) {
+    colisao |= 1;
   }
+
+  if ((prox_pos.y == r1->pos.y ||
+       prox_pos.y == r2->pos.y) &&
+      prox_pos.x >= r1->pos.x &&
+      prox_pos.x <= r1->pos.x + r1->tamanho) {
+    colisao |= 2;
+  }
+
+  alterar_direcao(b, r1, colisao);
 }
 
 /*
@@ -157,4 +182,24 @@ int no_limite(RAQUETE r) {
   int lim_dir = pos_dir < JOGO_LARG - 1 ? 0 : 1;
 
   return lim_esq | (lim_dir << 1);
+}
+
+void alterar_direcao(BOLA *b, RAQUETE *r, int colisao) {
+  int colisao_horizontal = 1 | 4;
+  int colisao_vertical = 2 | 8;
+
+  if ((colisao & colisao_horizontal) != 0) {
+    b->direcao.x = -(b->direcao.x);
+  } else if ((colisao & 2) != 0 &&
+	     r->direcao != 0){
+    b->direcao.x = r->direcao;
+  }
+
+  if ((colisao & colisao_vertical) != 0) {
+    b->direcao.y = -(b->direcao.y);
+  }
+}
+
+int deve_mover_bola(BOLA b) {
+  return b.ct_periodo >= b.periodo;
 }
