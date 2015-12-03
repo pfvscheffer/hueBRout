@@ -3,15 +3,16 @@
 
 /* OBS: as unidades do jogo são consideradas em distância Chebyshev */
 
-#define TIMEOUT_JOGO 50 // Milissegundos para leitura de caractere
-#define PERIODO_PADRAO 2
-#define JOGO_LARG 60
+#define TIMEOUT_JOGO 25 // Milissegundos para leitura de caractere
+#define PERIODO_PADRAO 4
+#define JOGO_LARG 80
 #define JOGO_ALT 40
 #define DEFAULT_LARG_RAQUETE 15
 #define COR_RAQUETE 1
 #define COR_BOLA 2
 #define COR_BLOCO_NORMAL 3
 #define COR_INQUEBRAVEL 4
+#define NUM_TIJOLOS 256
 
 typedef struct posicao_str {
   int x, y;
@@ -48,6 +49,18 @@ typedef struct wbola_str {
   BOLA bola;
   WINDOW *janela;
 } WBOLA;
+
+typedef enum {
+  nenhum;
+} POWERUP;
+
+typedef struct tijolo_str {
+  POSICAO pos;
+  int visivel;
+  int destrutivel;
+  int pontos;
+  POWERUP pup;
+} TIJOLO;
 
 void iniciar_jogo(WRAQUETE *wr1, WRAQUETE *wr2, WBOLA *wb);
 void imprime_no_meio(WINDOW *win, char *texto);
